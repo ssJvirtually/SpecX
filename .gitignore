@@ -1,0 +1,15 @@
+# IDE
+.idea/
+*.iml
+*.iws
+
+# Maven
+target/
+*.jar
+*.war
+*.ear
+
+# Environment
+.env
+
+# Agent State (Optional to commit, but generally good to exclude or include selectively. The user asked to maintain agent state, so maybe include `agent_state/` except it's session history? Actually let's include agent_state because the user said "If you want you can maintain agent folder which are marked down files That contains a session history and et cetera, so that. When the next session is started, you can pick from where you have left along with implementation plan." So committing it is good.

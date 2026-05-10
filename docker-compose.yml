@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.app
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # spawn Claude Code containers
+      - /tmp/agent-workspaces:/tmp/agent-workspaces # shared workspace
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+
+volumes:
+  agent-maven-cache:
+    external: true    # docker volume create agent-maven-cache
+  agent-npm-cache:
+    external: true    # docker volume create agent-npm-cache
