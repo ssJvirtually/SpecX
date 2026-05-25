@@ -53,17 +53,18 @@ public class DockerClaudeRunner {
         );
 
         try {
+            log.info("Starting Docker ProcessBuilder container command: {}", String.join(" ", command));
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
             StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
+                    new InputStreamReader(process.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
-                    log.debug("[claude-code] {}", line);
+                    log.info("[claude-code] {}", line);
                 }
             }
 

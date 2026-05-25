@@ -57,10 +57,6 @@ public class AgentCoordinator {
         this.jiraTicketRepository = jiraTicketRepository;
     }
 
-    private final ExecutorService dbPool       = Executors.newSingleThreadExecutor();
-    private final ExecutorService backendPool  = Executors.newFixedThreadPool(3);
-    private final ExecutorService frontendPool = Executors.newFixedThreadPool(2);
-
     public void orchestrate(String confluencePageId) {
         log.info("Starting linear orchestration for Confluence page: {}", confluencePageId);
 
@@ -143,23 +139,43 @@ public class AgentCoordinator {
     }
 
     public void runTickets(List<JiraIssue> dbTickets, List<JiraIssue> beTickets, List<JiraIssue> feTickets) {
-        // DB first — block until all complete
-        List<Future<?>> dbFutures = dbTickets.stream()
-            .<Future<?>>map(t -> dbPool.submit(() -> dbAgentService.processTicket(t)))
-            .toList();
-        dbFutures.forEach(f -> {
-            try { f.get(30, TimeUnit.MINUTES); }
-            catch (Exception e) { log.warn("DB ticket failed, continuing: {}", e.getMessage()); }
-        });
+        log.info("Starting fully sequential linear execution of agent tickets...");
 
-        // BE and FE in parallel
-        Stream.concat(
-            beTickets.stream().map(t -> backendPool.submit(()  -> backendAgentService.processTicket(t))),
-            feTickets.stream().map(t -> frontendPool.submit(() -> frontendAgentService.processTicket(t)))
-        ).toList().forEach(f -> {
-            try { f.get(30, TimeUnit.MINUTES); }
-            catch (Exception e) { log.error("Ticket failed: {}", e.getMessage()); }
-        });
+        // 1. Database agents first
+        log.info("Processing Database tickets (Count: {})...", dbTickets.size());
+        for (JiraIssue ticket : dbTickets) {
+            try {
+                log.info(">>>> DB Agent starting: {}", ticket.key());
+                dbAgentService.processTicket(ticket);
+                log.info("<<<< DB Agent completed: {}", ticket.key());
+            } catch (Exception e) {
+                log.error("Database ticket {} failed (continuing): {}", ticket.key(), e.getMessage(), e);
+            }
+        }
+
+        // 2. Backend agents second
+        log.info("Processing Backend tickets (Count: {})...", beTickets.size());
+        for (JiraIssue ticket : beTickets) {
+            try {
+                log.info(">>>> BE Agent starting: {}", ticket.key());
+                backendAgentService.processTicket(ticket);
+                log.info("<<<< BE Agent completed: {}", ticket.key());
+            } catch (Exception e) {
+                log.error("Backend ticket {} failed (continuing): {}", ticket.key(), e.getMessage(), e);
+            }
+        }
+
+        // 3. Frontend agents third
+        log.info("Processing Frontend tickets (Count: {})...", feTickets.size());
+        for (JiraIssue ticket : feTickets) {
+            try {
+                log.info(">>>> FE Agent starting: {}", ticket.key());
+                frontendAgentService.processTicket(ticket);
+                log.info("<<<< FE Agent completed: {}", ticket.key());
+            } catch (Exception e) {
+                log.error("Frontend ticket {} failed (continuing): {}", ticket.key(), e.getMessage(), e);
+            }
+        }
     }
 
     public void runBatch() {
