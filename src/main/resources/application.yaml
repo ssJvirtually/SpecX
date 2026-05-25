@@ -12,6 +12,14 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  docker:
+    compose:
+      enabled: true
+      file: docker-compose.yml
+      lifecycle-management: start_and_stop
+      readiness:
+        wait: true
+        timeout: PT2M
 
 server:
   port: 8080
