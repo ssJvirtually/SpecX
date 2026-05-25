@@ -3,6 +3,8 @@ version: '3.9'
 services:
 
   app:
+    profiles:
+      - app
     build:
       context: .
       dockerfile: docker/Dockerfile.app

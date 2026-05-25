@@ -18,7 +18,7 @@ spring:
       file: docker-compose.yml
       lifecycle-management: start_and_stop
       readiness:
-        wait: true
+        wait: ALWAYS
         timeout: PT2M
 
 server:
