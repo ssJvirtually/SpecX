@@ -72,6 +72,41 @@ public class GitService {
         }
     }
 
+    // Clones the default branch of the remote repository directly without creating a new local feature branch
+    public String cloneDefaultBranch(String repoUrl) {
+        String localPath = workspaceDir + "/default-branch-" + System.currentTimeMillis();
+        try {
+            Files.createDirectories(Path.of(localPath));
+            Git git = Git.cloneRepository()
+                .setURI(repoUrl)
+                .setDirectory(new File(localPath))
+                .setCredentialsProvider(credentials())
+                .call();
+            git.close();
+            return localPath;
+        } catch (Exception e) {
+            throw new GitOperationException("Clone failed for default branch of " + repoUrl, e);
+        }
+    }
+
+    // Stages all changes, commits, and pushes to the default branch
+    public void commitAndPushDefault(String repoPath, String commitMessage) {
+        try (Git git = Git.open(new File(repoPath))) {
+            String branchName = git.getRepository().getBranch();
+            git.add().addFilepattern(".").call();
+            git.commit()
+                .setMessage(commitMessage)
+                .setAuthor("Agent Bot", "agent@agentdev.com")
+                .call();
+            git.push()
+                .setCredentialsProvider(credentials())
+                .setRefSpecs(new RefSpec(branchName + ":" + branchName))
+                .call();
+        } catch (Exception e) {
+            throw new GitOperationException("Commit/push to default branch failed", e);
+        }
+    }
+
     // Always call in a finally block to free disk space
     public void cleanup(String repoPath) {
         FileUtils.deleteQuietly(new File(repoPath));
