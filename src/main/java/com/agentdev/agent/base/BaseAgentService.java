@@ -1,22 +1,14 @@
 package com.agentdev.agent.base;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
+import com.agentdev.agent.review.ReviewService;
 import com.agentdev.client.github.GitHubClientService;
-import com.agentdev.client.github.dto.PullRequestRequest;
 import com.agentdev.client.jira.JiraClient;
-import com.agentdev.core.model.ClaudeCodeResult;
-import com.agentdev.core.model.JiraIssue;
-import com.agentdev.core.model.PullRequestResult;
-import com.agentdev.core.model.ReviewDecision;
-import com.agentdev.core.model.ReviewStatus;
+import com.agentdev.core.model.*;
 import com.agentdev.docker.DockerClaudeRunner;
 import com.agentdev.git.GitService;
-import com.agentdev.agent.review.ReviewService;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 public abstract class BaseAgentService {
     

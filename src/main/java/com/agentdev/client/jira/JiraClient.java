@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -23,6 +24,9 @@ import com.agentdev.core.model.TicketType;
 public class JiraClient {
 
     private final WebClient webClient;
+
+    @Value("${jira.project-key:PSPKC}")
+    private String projectKey;
 
     public JiraClient(@Qualifier("jiraWebClient") WebClient webClient) {
         this.webClient = webClient;
@@ -51,7 +55,7 @@ public class JiraClient {
                                 ))
                             ))
                         ),
-                        "project", Map.of("key", System.getenv().getOrDefault("JIRA_PROJECT_KEY", "PROJ")),
+                        "project", Map.of("key", projectKey),
                         "issuetype", Map.of("name", "Task"),
                         "labels", request.labels()
                     )

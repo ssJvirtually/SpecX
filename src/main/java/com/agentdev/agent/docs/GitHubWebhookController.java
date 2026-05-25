@@ -25,8 +25,8 @@ public class GitHubWebhookController {
 
     @PostMapping
     public ResponseEntity<Void> handle(
-            @RequestHeader("X-GitHub-Event") String event,
-            @RequestHeader("X-Hub-Signature-256") String signature,
+            @RequestHeader(value = "X-GitHub-Event", required = false) String event,
+            @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
             @RequestBody String payload) {
 
         webhookVerifier.verify(payload, signature);

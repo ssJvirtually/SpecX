@@ -7,8 +7,12 @@ import com.agentdev.client.jira.JiraClient;
 import com.agentdev.client.jira.dto.JiraIssueRequest;
 import com.agentdev.core.model.JiraTicket;
 import com.agentdev.core.model.TicketPlan;
+import com.agentdev.core.model.JiraIssue;
+import com.agentdev.core.model.TicketType;
+import com.agentdev.core.model.TicketStatus;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,30 +32,52 @@ public class PlannerService {
         this.plannerAiAgent = plannerAiAgent;
     }
 
-    public void processPage(String pageId) {
+    public static record CreatedTickets(
+        List<JiraIssue> dbTickets,
+        List<JiraIssue> beTickets,
+        List<JiraIssue> feTickets
+    ) {}
+
+    public CreatedTickets processPage(String pageId) {
         String content  = confluenceClient.getPageContent(pageId);
         TicketPlan plan = plannerAiAgent.analyzeRequirements(content);
 
-        if (plan.frontendTickets() != null) plan.frontendTickets().forEach(t -> createJiraTicket(t, "agent-fe"));
-        if (plan.backendTickets() != null) plan.backendTickets().forEach(t  -> createJiraTicket(t, "agent-be"));
-        if (plan.databaseTickets() != null) plan.databaseTickets().forEach(t -> createJiraTicket(t, "agent-db"));
+        List<JiraIssue> dbTickets = new ArrayList<>();
+        List<JiraIssue> beTickets = new ArrayList<>();
+        List<JiraIssue> feTickets = new ArrayList<>();
+
+        if (plan.databaseTickets() != null) {
+            for (JiraTicket t : plan.databaseTickets()) {
+                dbTickets.add(createJiraTicket(t, "agent-db", TicketType.DATABASE));
+            }
+        }
+        if (plan.backendTickets() != null) {
+            for (JiraTicket t : plan.backendTickets()) {
+                beTickets.add(createJiraTicket(t, "agent-be", TicketType.BACKEND));
+            }
+        }
+        if (plan.frontendTickets() != null) {
+            for (JiraTicket t : plan.frontendTickets()) {
+                feTickets.add(createJiraTicket(t, "agent-fe", TicketType.FRONTEND));
+            }
+        }
 
         log.info("Created {} FE / {} BE / {} DB tickets from page {}",
-            plan.frontendTickets() != null ? plan.frontendTickets().size() : 0,
-            plan.backendTickets() != null ? plan.backendTickets().size() : 0,
-            plan.databaseTickets() != null ? plan.databaseTickets().size() : 0,
-            pageId);
+            feTickets.size(), beTickets.size(), dbTickets.size(), pageId);
+
+        return new CreatedTickets(dbTickets, beTickets, feTickets);
     }
 
-    private void createJiraTicket(JiraTicket ticket, String label) {
+    private JiraIssue createJiraTicket(JiraTicket ticket, String label, TicketType type) {
+        String description = ticket.description() + "\n\n*Acceptance Criteria:*\n" + ticket.acceptanceCriteria();
         JiraIssueRequest req = JiraIssueRequest.builder()
             .summary(ticket.title())
-            .description(ticket.description()
-                + "\n\n*Acceptance Criteria:*\n" + ticket.acceptanceCriteria())
+            .description(description)
             .labels(List.of(label, "agent-generated"))
             .storyPoints(ticket.storyPoints())
             .build();
         String key = jiraClient.createIssue(req);
         log.info("Created {} — {}", key, ticket.title());
+        return new JiraIssue(key, ticket.title(), description, ticket.acceptanceCriteria(), type, TicketStatus.TODO);
     }
 }

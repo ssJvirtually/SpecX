@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: agentic-dev-platform
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/specx}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+
+# External API Integrations (mapped to environment variables in .env)
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:dummy}
+
+confluence:
+  base-url: ${CONFLUENCE_URL:https://pspkcreative.atlassian.net}
+  username: ${CONFLUENCE_USERNAME:pspkcreative@gmail.com}
+  api-token: ${CONFLUENCE_API_TOKEN:dummy}
+
+jira:
+  base-url: ${JIRA_URL:https://pspkcreative.atlassian.net/}
+  username: ${JIRA_USERNAME:pspkcreative@gmail.com}
+  api-token: ${JIRA_API_TOKEN:dummy}
+  project-key: ${JIRA_PROJECT_KEY:KAN}
+
+github:
+  token: ${GITHUB_TOKEN:dummy}
+  backend-repo: ${GITHUB_BACKEND_REPO:https://github.com/ssJvirtually/banking-app}
+  frontend-repo: ${GITHUB_FRONTEND_REPO:https://github.com/ssJvirtually/banking-app}
+  webhook-secret: ${GITHUB_WEBHOOK_SECRET:}
+
+git:
+  workspace-dir: ${GIT_WORKSPACE_DIR:/tmp/agent-workspaces}
+
+langchain4j:
+  google-ai-gemini:
+    chat-model:
+      api-key: ${GEMINI_API_KEY:}
+      model-name: gemini-3.5-flash
+      temperature: 0.2
+      timeout: PT120S
+
+docker:
+  warmup:
+    enabled: ${DOCKER_WARMUP_ENABLED:true}
+  timeout-minutes: ${DOCKER_TIMEOUT_MINUTES:20}
+  memory-limit: ${DOCKER_MEMORY_LIMIT:4g}
+  cpu-limit: ${DOCKER_CPU_LIMIT:2.0}

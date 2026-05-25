@@ -6,20 +6,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.agentdev.orchestrator.AgentCoordinator;
+
 @RestController
 @RequestMapping("/api/planner")
 public class PlannerController {
 
-    private final PlannerService plannerService;
+    private final AgentCoordinator agentCoordinator;
 
-    public PlannerController(PlannerService plannerService) {
-        this.plannerService = plannerService;
+    public PlannerController(AgentCoordinator agentCoordinator) {
+        this.agentCoordinator = agentCoordinator;
     }
 
     @PostMapping("/process")
     public ResponseEntity<String> process(@RequestParam String confluencePageId) {
-        plannerService.processPage(confluencePageId);
+        agentCoordinator.orchestrateAsync(confluencePageId);
         return ResponseEntity.accepted()
-            .body("Processing started for page: " + confluencePageId);
+            .body("Linear orchestration pipeline started in background for page: " + confluencePageId);
     }
 }
