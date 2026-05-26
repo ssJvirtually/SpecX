@@ -26,16 +26,16 @@ public class CacheWarmer {
 
         runAndWait(List.of(
             "docker", "run", "--rm",
-            "-v", "agent-maven-cache:/root/.m2",
-            "claude-code-agent:latest",
+            "-v", "agent-maven-cache:/home/geminiuser/.m2",
+            "antigravity-cli",
             "mvn", "dependency:get",
             "-Dartifact=org.springframework.boot:spring-boot-starter-web:3.3.2"
         ));
 
         runAndWait(List.of(
             "docker", "run", "--rm",
-            "-v", "agent-npm-cache:/root/.npm",
-            "claude-code-agent:latest",
+            "-v", "agent-npm-cache:/home/geminiuser/.npm",
+            "antigravity-cli",
             "npm", "install", "--prefer-offline",
             "react", "react-dom", "typescript", "axios"
         ));

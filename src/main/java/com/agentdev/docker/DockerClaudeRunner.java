@@ -23,7 +23,7 @@ public class DockerClaudeRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DockerClaudeRunner.class);
 
-    private static final String IMAGE        = "claude-code-agent:latest";
+    private static final String IMAGE        = "antigravity-cli";
     private static final String MAVEN_VOLUME = "agent-maven-cache";
     private static final String NPM_VOLUME   = "agent-npm-cache";
 
@@ -35,21 +35,19 @@ public class DockerClaudeRunner {
     public ClaudeCodeResult run(String repoPath, String prompt) {
         Instant start = Instant.now();
 
+        String userHome = System.getProperty("user.home");
         List<String> command = List.of(
             "docker", "run", "--rm",
-            "-v", repoPath + ":/workspace",
-            "-v", MAVEN_VOLUME + ":/root/.m2",
-            "-v", NPM_VOLUME + ":/root/.npm",
-            "-w", "/workspace",
-            "-e", "ANTHROPIC_API_KEY=" + apiKey,
+            "-v", repoPath + ":/home/geminiuser/app",
+            "-v", userHome + "/.gemini:/home/geminiuser/.gemini",
+            "-v", MAVEN_VOLUME + ":/home/geminiuser/.m2",
+            "-v", NPM_VOLUME + ":/home/geminiuser/.npm",
+            "-w", "/home/geminiuser/app",
             "--network", "bridge",
             "--memory", memoryLimit,
             "--cpus", cpuLimit,
             IMAGE,
-            "claude", "--print",
-            "--dangerously-skip-permissions",
-            "--output-format", "json",
-            prompt
+            "-p", prompt
         );
 
         try {
