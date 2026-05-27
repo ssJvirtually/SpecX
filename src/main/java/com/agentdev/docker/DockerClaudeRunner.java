@@ -51,18 +51,13 @@ public class DockerClaudeRunner {
             String userHome = System.getProperty("user.home");
             String geminiHostPath = Paths.get(userHome, ".gemini").toAbsolutePath().toString();
 
+            log.info("Step 1: Creating DefaultDockerClientConfig...");
             DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
-            DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-                    .dockerHost(config.getDockerHost())
-                    .sslConfig(config.getSSLConfig())
-                    .maxConnections(100)
-                    .connectionTimeout(Duration.ofSeconds(30))
-                    .responseTimeout(Duration.ofSeconds(45))
-                    .build();
+            log.info("Docker daemon URI configured: {}", config.getDockerHost());
 
-            dockerClient = DockerClientBuilder.getInstance(config)
-                    .withDockerHttpClient(httpClient)
-                    .build();
+            log.info("Step 2: Instantiating DockerClient via DockerClientBuilder...");
+            dockerClient = DockerClientBuilder.getInstance(config).build();
+            log.info("Step 3: DockerClient initialized successfully.");
 
             // Configure volume binds (Host project folder -> Container workspace)
             HostConfig hostConfig = HostConfig.newHostConfig()
