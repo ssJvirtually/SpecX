@@ -55,9 +55,21 @@ public class DockerClaudeRunner {
             DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
             log.info("Docker daemon URI configured: {}", config.getDockerHost());
 
-            log.info("Step 2: Instantiating DockerClient via DockerClientBuilder...");
-            dockerClient = DockerClientBuilder.getInstance(config).build();
-            log.info("Step 3: DockerClient initialized successfully.");
+            log.info("Step 2: Creating ApacheDockerHttpClient.Builder...");
+            DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+                    .dockerHost(config.getDockerHost())
+                    .sslConfig(config.getSSLConfig())
+                    .maxConnections(100)
+                    .connectionTimeout(Duration.ofSeconds(30))
+                    .responseTimeout(Duration.ofSeconds(45))
+                    .build();
+            log.info("ApacheDockerHttpClient constructed successfully.");
+
+            log.info("Step 3: Instantiating DockerClient via DockerClientBuilder with Apache transport...");
+            dockerClient = DockerClientBuilder.getInstance(config)
+                    .withDockerHttpClient(httpClient)
+                    .build();
+            log.info("Step 4: DockerClient initialized successfully.");
 
             // Configure volume binds (Host project folder -> Container workspace)
             HostConfig hostConfig = HostConfig.newHostConfig()
