@@ -3,13 +3,15 @@ package com.agentdev.docker;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Volume;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
-import com.github.dockerjava.core.command.ExecStartResultCallback;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.core.command.LogContainerResultCallback;
+import com.github.dockerjava.core.command.WaitContainerResultCallback;
 import com.github.dockerjava.transport.DockerHttpClient;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -55,17 +57,17 @@ public class DockerClaudeRunner {
             DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
             log.info("Docker daemon URI configured: {}", config.getDockerHost());
 
-            log.info("Step 2: Creating ApacheDockerHttpClient.Builder...");
-            DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+            log.info("Step 2: Creating ZerodepDockerHttpClient.Builder...");
+            DockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
                     .dockerHost(config.getDockerHost())
                     .sslConfig(config.getSSLConfig())
                     .maxConnections(100)
                     .connectionTimeout(Duration.ofSeconds(30))
                     .responseTimeout(Duration.ofSeconds(45))
                     .build();
-            log.info("ApacheDockerHttpClient constructed successfully.");
+            log.info("ZerodepDockerHttpClient constructed successfully.");
 
-            log.info("Step 3: Instantiating DockerClient via DockerClientBuilder with Apache transport...");
+            log.info("Step 3: Instantiating DockerClient via DockerClientBuilder with Zerodep transport...");
             dockerClient = DockerClientBuilder.getInstance(config)
                     .withDockerHttpClient(httpClient)
                     .build();
@@ -80,11 +82,11 @@ public class DockerClaudeRunner {
                             new Bind("agent-npm-cache", new Volume("/home/geminiuser/.npm"))
                     );
 
-            log.info("Creating background Antigravity CLI container...");
+            log.info("Creating Antigravity CLI container in the foreground...");
             CreateContainerResponse container = dockerClient.createContainerCmd(IMAGE)
                     .withHostConfig(hostConfig)
                     .withWorkingDir("/workspace")
-                    .withEntrypoint("tail", "-f", "/dev/null")
+                    .withCmd("agy", "--dangerously-skip-permissions", "-p", prompt)
                     .exec();
 
             containerId = container.getId();
@@ -92,26 +94,31 @@ public class DockerClaudeRunner {
 
             log.info("Starting container...");
             dockerClient.startContainerCmd(containerId).exec();
-            log.info("Container successfully started in the background.");
-
-            // Formulate executive agy command
-            List<String> execCmd = new ArrayList<>();
-            execCmd.add("agy");
-            execCmd.add("--dangerously-skip-permissions");
-            execCmd.add("-p");
-            execCmd.add(prompt);
-
-            log.info("Executing Antigravity command inside the container: agy --dangerously-skip-permissions -p \"{}\"", prompt);
-            String execId = dockerClient.execCreateCmd(containerId)
-                    .withAttachStdout(true)
-                    .withAttachStderr(true)
-                    .withCmd(execCmd.toArray(new String[0]))
-                    .exec()
-                    .getId();
+            log.info("Container successfully started. Streaming logs in real-time...");
 
             LoggingOutputStream logStream = new LoggingOutputStream();
-            boolean completed = dockerClient.execStartCmd(execId)
-                    .exec(new ExecStartResultCallback(logStream, logStream))
+            
+            // Attach log listener to stream container logs
+            dockerClient.logContainerCmd(containerId)
+                    .withStdOut(true)
+                    .withStdErr(true)
+                    .withFollowStream(true)
+                    .withTailAll()
+                    .exec(new LogContainerResultCallback() {
+                        @Override
+                        public void onNext(Frame item) {
+                            try {
+                                logStream.write(item.getPayload());
+                            } catch (Exception e) {
+                                // ignore
+                            }
+                        }
+                    });
+
+            // Wait for container to exit completely
+            log.info("Waiting for Antigravity container to exit...");
+            boolean completed = dockerClient.waitContainerCmd(containerId)
+                    .exec(new WaitContainerResultCallback())
                     .awaitCompletion(timeoutMinutes, TimeUnit.MINUTES);
 
             if (!completed) {
@@ -132,14 +139,7 @@ public class DockerClaudeRunner {
         } finally {
             if (dockerClient != null && containerId != null) {
                 try {
-                    log.info("Stopping background Antigravity container...");
-                    dockerClient.killContainerCmd(containerId).exec();
-                } catch (Exception e) {
-                    log.warn("Container was already stopped: {}", e.getMessage());
-                }
-
-                try {
-                    log.info("Removing background Antigravity container...");
+                    log.info("Removing Antigravity container...");
                     dockerClient.removeContainerCmd(containerId).withForce(true).exec();
                 } catch (Exception e) {
                     log.warn("Failed to remove container: {}", e.getMessage());
